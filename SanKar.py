@@ -1,4 +1,4 @@
-from aiogram import Bot, Dispatcher
+from aiogram import Bot, Dispatcher, F
 from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 from aiogram.filters import Command
 import asyncio
@@ -15,7 +15,7 @@ games = {}
 def main_menu():
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="🎁 Присоединиться", callback_data="join")],
-        [InlineKeyboardButton(text="📋 Участники", callback_data="list")],
+        [InlineKeyboardButton(text="📋 Участники", callback_data="list_players")],
         [InlineKeyboardButton(text="🎲 Жеребьёвка", callback_data="draw")]
     ])
 
@@ -28,40 +28,66 @@ async def start_santa_command(message: Message):
         reply_markup=main_menu()
     )
 
-@dp.callback_query()
-async def callback_handler(call: CallbackQuery):
+# ----- JOIN -----
+@dp.callback_query(F.data == "join")
+async def join_handler(call: CallbackQuery):
     chat_id = call.message.chat.id
     user = call.from_user
     game = games.get(chat_id)
 
-    if call.data == "join":
-        if game is None:
-            await call.answer("Игра не запущена", show_alert=True)
-            return
-        game['players'][user.id] = user.username
-        await call.answer(f"{user.username} присоединился 🎁", show_alert=True)
+    if not game:
+        await call.answer("Игра не запущена", show_alert=True)
+        return
 
-    elif call.data == "list":
-        if game is None or not game['players']:
-            await call.answer("Нет участников", show_alert=True)
-            return
-        text = "🎁 Участники:\n" + "\n".join(game['players'].values())
-        text += f"\n💰 Бюджет подарка: {BUDGET} ₽"
-        await call.message.answer(text)
+    name = user.username or user.full_name
+    game["players"][user.id] = name
 
-    elif call.data == "draw":
-        if game is None or len(game['players']) < 3:
-            await call.answer("Минимум 3 участника", show_alert=True)
-            return
-        ids = list(game['players'].keys())
-        shuffled = ids[:]
-        random.shuffle(shuffled)
-        for i, giver in enumerate(ids):
-            receiver = shuffled[i-1]
-            await bot.send_message(giver, f"🎅 Ты даришь подарок @{game['players'][receiver]} на {BUDGET} ₽")
-        await call.message.answer("Жеребьёвка проведена!")
-        del games[chat_id]
+    await call.answer("Ты участвуешь 🎁", show_alert=True)
+
+# ----- LIST -----
+@dp.callback_query(F.data == "list_players")
+async def list_handler(call: CallbackQuery):
+    chat_id = call.message.chat.id
+    game = games.get(chat_id)
+
+    if not game or not game["players"]:
+        await call.answer("Участников пока нет", show_alert=True)
+        return
+
+    text = "🎁 Участники:\n"
+    for name in game["players"].values():
+        text += f"• {name}\n"
+    text += f"\n💰 Бюджет подарка: {BUDGET} ₽"
+
+    await call.message.answer(text)
+    await call.answer()
+
+# ----- DRAW -----
+@dp.callback_query(F.data == "draw")
+async def draw_handler(call: CallbackQuery):
+    chat_id = call.message.chat.id
+    user = call.from_user
+    game = games.get(chat_id)
+
+    if not game or len(game["players"]) < 3:
+        await call.answer("Нужно минимум 3 участника", show_alert=True)
+        return
+
+    players = list(game["players"].items())
+    ids = [p[0] for p in players]
+    random.shuffle(ids)
+
+    for i, giver in enumerate(ids):
+        receiver = ids[i - 1]
+        await bot.send_message(
+            giver,
+            f"🎅 Ты даришь подарок @{game['players'][receiver]}\n💰 Бюджет: {BUDGET} ₽"
+        )
+
+    await call.message.answer("🎉 Жеребьёвка проведена! Проверьте ЛС 🎁")
+    await call.answer()
+    del games[chat_id]
 
 # ---------- RUN BOT ----------
 if __name__ == "__main__":
-    asyncio.run(dp.start_polling(bot))
+    asyncio.run(dp.start_polling(bot, allowed_updates=["message", "callback_query"]))
