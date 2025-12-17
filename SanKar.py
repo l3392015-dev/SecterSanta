@@ -24,14 +24,14 @@ def main_menu():
     ])
 
 # ---------- PRIVATE START ----------
-@dp.message(Command("start"))
+@dp.message(Command(commands=["start"]))
 async def private_start(message: Message):
     if message.chat.type == ChatType.PRIVATE:
         ready_users.add(message.from_user.id)
         await message.answer("✅ Отлично! Теперь ты можешь участвовать в Тайном Санте 🎄")
 
 # ---------- BOT LOGIC ----------
-@dp.message(Command("start_santa"))
+@dp.message(Command(commands=["start_santa"]))
 async def start_santa_command(message: Message):
     logging.info(f"Received /start_santa from {message.from_user.id} in chat {message.chat.id}")
     if message.chat.type not in [ChatType.GROUP, ChatType.SUPERGROUP]:
