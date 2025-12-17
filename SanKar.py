@@ -3,6 +3,9 @@ from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, C
 from aiogram.filters import Command
 import asyncio
 import random
+import logging
+
+logging.basicConfig(level=logging.INFO)
 
 TOKEN = "8419759472:AAEABsBJJVxqoLXYi1kOnXqkdnnCKag3iPs"
 bot = Bot(TOKEN)
@@ -30,6 +33,7 @@ async def private_start(message: Message):
 # ---------- BOT LOGIC ----------
 @dp.message(Command("start_santa"))
 async def start_santa_command(message: Message):
+    logging.info(f"Received /start_santa from {message.from_user.id} in chat {message.chat.id}")
     if message.chat.type not in [ChatType.GROUP, ChatType.SUPERGROUP]:
         await message.answer("❌ Команду /start_santa можно использовать только в группе")
         return
@@ -43,6 +47,7 @@ async def start_santa_command(message: Message):
 # ----- JOIN -----
 @dp.callback_query(F.data == "join")
 async def join_handler(call: CallbackQuery):
+    logging.info(f"{call.from_user.id} clicked join in chat {call.message.chat.id}")
     chat_id = call.message.chat.id
     user = call.from_user
     game = games.get(chat_id)
@@ -59,6 +64,7 @@ async def join_handler(call: CallbackQuery):
 # ----- LIST -----
 @dp.callback_query(F.data == "list_players")
 async def list_handler(call: CallbackQuery):
+    logging.info(f"{call.from_user.id} clicked list_players in chat {call.message.chat.id}")
     chat_id = call.message.chat.id
     game = games.get(chat_id)
 
@@ -78,6 +84,7 @@ async def list_handler(call: CallbackQuery):
 # ----- DRAW (только админ) -----
 @dp.callback_query(F.data == "draw")
 async def draw_handler(call: CallbackQuery):
+    logging.info(f"{call.from_user.id} clicked draw in chat {call.message.chat.id}")
     chat_id = call.message.chat.id
     user = call.from_user
     game = games.get(chat_id)
@@ -121,4 +128,5 @@ async def draw_handler(call: CallbackQuery):
 
 # ---------- RUN BOT ----------
 if __name__ == "__main__":
+    logging.info("Starting bot...")
     asyncio.run(dp.start_polling(bot, allowed_updates=["message", "callback_query"]))
