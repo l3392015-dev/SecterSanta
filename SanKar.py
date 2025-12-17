@@ -1,5 +1,5 @@
 from aiogram import Bot, Dispatcher, F
-from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
+from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery, ChatType
 from aiogram.filters import Command
 import asyncio
 import random
@@ -23,17 +23,20 @@ def main_menu():
 # ---------- PRIVATE START ----------
 @dp.message(Command("start"))
 async def private_start(message: Message):
-    if message.chat.type == "private":
+    if message.chat.type == ChatType.PRIVATE:
         ready_users.add(message.from_user.id)
         await message.answer("✅ Отлично! Теперь ты можешь участвовать в Тайном Санте 🎄")
 
 # ---------- BOT LOGIC ----------
 @dp.message(Command("start_santa"))
 async def start_santa_command(message: Message):
+    if message.chat.type not in [ChatType.GROUP, ChatType.SUPERGROUP]:
+        await message.answer("❌ Команду /start_santa можно использовать только в группе")
+        return
+
     games[message.chat.id] = {"players": {}, "admin_id": message.from_user.id}
     await message.answer(
-        f"🎄 Тайный Санта начался!
-💰 Бюджет подарка: {BUDGET} ₽",
+        f"🎄 Тайный Санта начался!\n💰 Бюджет подарка: {BUDGET} ₽",
         reply_markup=main_menu()
     )
 
